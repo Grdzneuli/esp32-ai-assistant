@@ -6,6 +6,10 @@ AudioOutput::AudioOutput()
     : _initialized(false)
     , _playing(false)
     , _volume(DEFAULT_VOLUME)
+    , _stopRequested(false)
+    , _asyncBuffer(nullptr)
+    , _asyncSamples(0)
+    , _asyncPosition(0)
 {
 }
 
@@ -28,8 +32,13 @@ bool AudioOutput::begin() {
 
 void AudioOutput::end() {
     if (_initialized) {
+        stop();
         i2s_driver_uninstall(I2S_SPK_PORT);
         _initialized = false;
+    }
+    if (_asyncBuffer) {
+        free(_asyncBuffer);
+        _asyncBuffer = nullptr;
     }
 }
 
@@ -164,10 +173,75 @@ void AudioOutput::playErrorSound() {
 }
 
 void AudioOutput::stop() {
+    _stopRequested = true;
     if (_initialized) {
         i2s_zero_dma_buffer(I2S_SPK_PORT);
-        _playing = false;
     }
+    if (_asyncBuffer) {
+        free(_asyncBuffer);
+        _asyncBuffer = nullptr;
+    }
+    _asyncSamples = 0;
+    _asyncPosition = 0;
+    _playing = false;
+    _stopRequested = false;
+}
+
+void AudioOutput::playAsync(const int16_t* samples, size_t count) {
+    if (!_initialized || count == 0) return;
+
+    // Stop any existing playback
+    if (_asyncBuffer) {
+        free(_asyncBuffer);
+    }
+
+    // Allocate buffer in PSRAM if available
+    if (psramFound()) {
+        _asyncBuffer = (int16_t*)ps_malloc(count * sizeof(int16_t));
+    } else {
+        _asyncBuffer = (int16_t*)malloc(count * sizeof(int16_t));
+    }
+
+    if (!_asyncBuffer) {
+        Serial.println("[AudioOutput] Failed to allocate async buffer");
+        return;
+    }
+
+    memcpy(_asyncBuffer, samples, count * sizeof(int16_t));
+    applyVolume(_asyncBuffer, count);
+
+    _asyncSamples = count;
+    _asyncPosition = 0;
+    _playing = true;
+    _stopRequested = false;
+
+    Serial.printf("[AudioOutput] Starting async playback of %d samples\n", count);
+}
+
+void AudioOutput::update() {
+    if (!_playing || !_asyncBuffer || _stopRequested) return;
+
+    if (_asyncPosition >= _asyncSamples) {
+        // Playback complete
+        Serial.println("[AudioOutput] Async playback complete");
+        free(_asyncBuffer);
+        _asyncBuffer = nullptr;
+        _asyncSamples = 0;
+        _asyncPosition = 0;
+        _playing = false;
+        return;
+    }
+
+    // Write a chunk of audio
+    const size_t CHUNK_SIZE = 512;
+    size_t remaining = _asyncSamples - _asyncPosition;
+    size_t toWrite = min(remaining, CHUNK_SIZE);
+
+    size_t bytesWritten = 0;
+    i2s_write(I2S_SPK_PORT, _asyncBuffer + _asyncPosition,
+              toWrite * sizeof(int16_t), &bytesWritten, pdMS_TO_TICKS(10));
+
+    _asyncPosition += bytesWritten / sizeof(int16_t);
 }
 
 void AudioOutput::applyVolume(int16_t* samples, size_t count) {

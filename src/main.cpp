@@ -16,6 +16,7 @@
 #include "config.h"
 #include "wifi_manager.h"
 #include "gemini_client.h"
+#include "speech_client.h"
 #include "display.h"
 #include "audio_input.h"
 #include "audio_output.h"
@@ -25,11 +26,16 @@
 // Global objects
 WiFiManager wifiManager;
 GeminiClient gemini;
+SpeechClient speech;
 Display display;
 AudioInput audioInput;
 AudioOutput audioOutput;
 Buttons buttons;
 StatusLED statusLed;
+
+// TTS audio buffer (allocated in PSRAM)
+int16_t* ttsBuffer = nullptr;
+size_t ttsBufferSize = 0;
 
 // Assistant state machine
 enum class AssistantState {
@@ -116,6 +122,25 @@ void setup() {
             "You can help with general questions, coding, IoT projects, and more."
         );
 
+        // Initialize Speech client (STT/TTS)
+        speech.begin(GOOGLE_CLOUD_API_KEY);
+        speech.setLanguage(SPEECH_LANGUAGE);
+        speech.setVoice(TTS_VOICE);
+
+        // Allocate TTS buffer in PSRAM
+        ttsBufferSize = TTS_MAX_SAMPLES;
+        if (psramFound()) {
+            ttsBuffer = (int16_t*)ps_malloc(ttsBufferSize * sizeof(int16_t));
+            Serial.println("[System] TTS buffer allocated in PSRAM");
+        } else {
+            ttsBuffer = (int16_t*)malloc(ttsBufferSize * sizeof(int16_t));
+            Serial.println("[System] TTS buffer allocated in RAM");
+        }
+
+        if (!ttsBuffer) {
+            Serial.println("[ERROR] Failed to allocate TTS buffer");
+        }
+
         delay(1000);
         setState(AssistantState::IDLE);
     } else {
@@ -136,6 +161,7 @@ void loop() {
     statusLed.update();
     display.update();
     wifiManager.update();
+    audioOutput.update();  // Handle async audio playback
 
     // Process audio if listening
     if (currentState == AssistantState::LISTENING) {
@@ -157,6 +183,14 @@ void loop() {
     switch (currentState) {
         case AssistantState::PROCESSING:
             processVoiceInput();
+            break;
+
+        case AssistantState::RESPONDING:
+            // Check if audio playback finished
+            if (!audioOutput.isPlaying()) {
+                Serial.println("[Voice] Response playback complete");
+                setState(AssistantState::IDLE);
+            }
             break;
 
         case AssistantState::ERROR:
@@ -275,10 +309,6 @@ void handleButtonEvent(Button button, ButtonEvent event) {
 }
 
 void processVoiceInput() {
-    // For now, we'll use a placeholder since full speech-to-text requires
-    // additional cloud API integration. In a complete implementation,
-    // you would send the audio buffer to Google Speech-to-Text API.
-
     // Get recorded audio info
     size_t audioSamples = audioInput.getBufferSize();
     Serial.printf("[Voice] Processing %d samples\n", audioSamples);
@@ -290,19 +320,35 @@ void processVoiceInput() {
         return;
     }
 
-    // In a real implementation, you would:
-    // 1. Encode the audio buffer to a format like WAV or FLAC
-    // 2. Send it to Google Cloud Speech-to-Text API
-    // 3. Get the transcribed text back
-    //
-    // For demonstration, we'll use a test message
-    String userText = "Hello, what can you help me with?";
+    // Step 1: Speech-to-Text - Convert audio to text
+    Serial.println("[STT] Transcribing audio...");
+    display.showThinking();
+
+    String userText = speech.transcribe(
+        audioInput.getBuffer(),
+        audioSamples,
+        I2S_MIC_SAMPLE_RATE
+    );
+
+    if (speech.hasError()) {
+        lastError = "STT Error: " + speech.getLastError();
+        Serial.println("[STT] " + lastError);
+        setState(AssistantState::ERROR);
+        audioOutput.playErrorSound();
+        return;
+    }
+
+    if (userText.length() == 0) {
+        Serial.println("[STT] No speech detected");
+        setState(AssistantState::IDLE);
+        return;
+    }
 
     // Show user message on display
     display.showUserMessage(userText);
     Serial.println("[User] " + userText);
 
-    // Send to Gemini
+    // Step 2: Send to Gemini for AI response
     Serial.println("[Gemini] Sending request...");
     String response = gemini.chat(userText);
 
@@ -313,26 +359,43 @@ void processVoiceInput() {
         return;
     }
 
-    // Show AI response
+    // Show AI response on display
     display.showAIMessage(response);
     Serial.println("[AI] " + response);
 
-    // In a complete implementation, you would:
-    // 1. Send the response text to Google Cloud Text-to-Speech API
-    // 2. Receive audio data back
-    // 3. Play the audio through the speaker
-    //
-    // For demonstration, we just show the text and play a sound
+    // Step 3: Text-to-Speech - Convert response to audio
+    Serial.println("[TTS] Synthesizing speech...");
     setState(AssistantState::RESPONDING);
-    audioOutput.playBeep();
-    delay(500);
 
-    setState(AssistantState::IDLE);
-}
+    if (ttsBuffer) {
+        size_t ttsSamples = speech.synthesize(
+            response,
+            ttsBuffer,
+            ttsBufferSize,
+            I2S_SPK_SAMPLE_RATE
+        );
 
-// Helper function to convert audio buffer to text (placeholder)
-String getTextFromAudio() {
-    // This would integrate with Google Cloud Speech-to-Text API
-    // For now, return empty string
-    return "";
+        if (speech.hasError()) {
+            Serial.println("[TTS] Error: " + speech.getLastError());
+            // Fall back to just showing text
+            delay(2000);  // Give time to read
+            setState(AssistantState::IDLE);
+            return;
+        }
+
+        if (ttsSamples > 0) {
+            Serial.printf("[TTS] Playing %d samples\n", ttsSamples);
+            audioOutput.playAsync(ttsBuffer, ttsSamples);
+            // State will change to IDLE when playback completes (in loop)
+        } else {
+            Serial.println("[TTS] No audio generated");
+            delay(2000);
+            setState(AssistantState::IDLE);
+        }
+    } else {
+        // No TTS buffer, just show text
+        Serial.println("[TTS] No buffer available, text-only mode");
+        delay(2000);
+        setState(AssistantState::IDLE);
+    }
 }

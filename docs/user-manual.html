@@ -746,15 +746,16 @@
             </svg>
         </div>
         <h1>ESP32-S3 AI Assistant</h1>
-        <p class="subtitle">User Manual & Interactive Guide</p>
+        <p class="subtitle">Full Voice AI Assistant - Talk & Listen</p>
     </header>
 
     <nav>
         <ul>
             <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#api-setup">API Setup</a></li>
             <li><a href="#hardware">Hardware</a></li>
             <li><a href="#buttons">Controls</a></li>
-            <li><a href="#flow">User Flow</a></li>
+            <li><a href="#flow">Voice Flow</a></li>
             <li><a href="#states">States</a></li>
             <li><a href="#led">LED Guide</a></li>
         </ul>
@@ -790,8 +791,46 @@
                     <div class="step">
                         <div class="step-number">4</div>
                         <div class="step-content">
-                            <h3>Get Your Answer</h3>
-                            <p>Release or wait for silence detection. The AI will process and respond!</p>
+                            <h3>Hear Your Answer</h3>
+                            <p>Your speech is transcribed, sent to Gemini AI, and the response is spoken aloud!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Setup -->
+        <section id="api-setup" class="fade-in">
+            <h2>API Setup</h2>
+            <div class="quick-start">
+                <p style="margin-bottom: 20px; color: var(--text-dim);">You need two API keys for full voice functionality:</p>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Gemini API Key</h3>
+                            <p>For AI responses. Get it from <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent);">Google AI Studio</a></p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Google Cloud API Key</h3>
+                            <p>For Speech-to-Text and Text-to-Speech. Get it from <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent);">Google Cloud Console</a></p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Enable Cloud APIs</h3>
+                            <p>In Google Cloud Console, enable: <strong>Cloud Speech-to-Text API</strong> and <strong>Cloud Text-to-Speech API</strong></p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h3>Configure</h3>
+                            <p>Copy <code style="background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px;">src/config.h.example</code> to <code style="background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px;">src/config.h</code> and add your keys</p>
                         </div>
                     </div>
                 </div>
@@ -849,7 +888,7 @@
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
                         I2S Speaker
                     </h3>
-                    <p>Audio amplifier for sound feedback and future text-to-speech responses.</p>
+                    <p>Audio amplifier for Text-to-Speech playback and sound feedback.</p>
                 </div>
                 <div class="hardware-card">
                     <h3>
@@ -1076,7 +1115,7 @@
     </main>
 
     <footer>
-        <p>ESP32-S3 AI Assistant &copy; 2024 | Powered by <a href="https://ai.google.dev/" target="_blank">Google Gemini</a></p>
+        <p>ESP32-S3 AI Assistant &copy; 2024 | Powered by <a href="https://ai.google.dev/" target="_blank">Google Gemini</a> + <a href="https://cloud.google.com/speech-to-text" target="_blank">Cloud Speech APIs</a></p>
     </footer>
 
     <script>
