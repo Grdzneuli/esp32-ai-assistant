@@ -109,6 +109,14 @@
 #define VAD_SILENCE_MS     1500  // Silence duration to stop recording
 
 // -----------------------------------------------------------------------------
+// Wake Word Detection
+// -----------------------------------------------------------------------------
+#define WAKE_WORD_ENABLED       true   // Enable/disable wake word at startup
+#define WAKE_WORD_SENSITIVITY   0.5f   // Detection sensitivity (0.0-1.0, higher = more sensitive)
+#define WAKE_WORD_ENERGY_THRESHOLD    800    // Minimum audio energy to start detection
+#define WAKE_WORD_TRIGGER_THRESHOLD   0.6f   // Pattern match threshold
+
+// -----------------------------------------------------------------------------
 // Web Server
 // -----------------------------------------------------------------------------
 #define WEB_SERVER_PORT    80

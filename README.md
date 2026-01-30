@@ -5,6 +5,7 @@ A fully voice-enabled AI assistant for the **ESP32-S3**, powered by Google Gemin
 ## Features
 
 - **Full Voice Interaction** - Speak naturally, hear AI responses
+- **Wake Word Detection** - Hands-free activation by voice
 - **Speech-to-Text** - Google Cloud Speech API transcription
 - **Text-to-Speech** - Neural voice synthesis for natural responses
 - **AI Powered** - Google Gemini for intelligent conversations
@@ -123,6 +124,14 @@ pio device monitor
 
 ### Voice Interaction Flow
 
+**Option 1: Wake Word (Hands-free)**
+1. **Say wake word** - Device detects speech pattern and activates
+2. **Speak** - Talk naturally to the device
+3. **Pause** - Silence detection auto-stops recording
+4. **Processing** - LED turns cyan, "Thinking..." on display
+5. **Response** - AI response shown on screen & spoken aloud
+
+**Option 2: Button Activation**
 1. **Press BOOT** - Hear start sound, LED turns red
 2. **Speak** - Talk naturally to the device
 3. **Release or wait** - Silence detection auto-stops recording
@@ -139,6 +148,7 @@ esp32-ai-assistant/
 │   ├── config.h           # Configuration (WiFi, API keys, pins)
 │   ├── speech_client.*    # Google Cloud STT/TTS client
 │   ├── gemini_client.*    # Google Gemini AI client
+│   ├── wake_word.*        # Wake word detection module
 │   ├── wifi_manager.*     # WiFi connection handling
 │   ├── display.*          # TFT display UI
 │   ├── audio_input.*      # I2S microphone capture
@@ -173,6 +183,24 @@ esp32-ai-assistant/
 #define VAD_SILENCE_MS     1500      // Silence duration to stop recording
 ```
 
+### Wake Word Detection
+
+```cpp
+#define WAKE_WORD_ENABLED       true   // Enable/disable wake word
+#define WAKE_WORD_SENSITIVITY   0.5f   // 0.0-1.0 (higher = more sensitive)
+#define WAKE_WORD_ENERGY_THRESHOLD  800  // Minimum audio energy
+```
+
+The wake word detection uses audio pattern recognition to detect speech-like sounds. It works by:
+- Monitoring audio energy levels continuously
+- Detecting voiced speech patterns (rising edge → sustained → falling edge)
+- Triggering when a valid speech pattern lasting 300ms-1200ms is detected
+
+**Tips for best results:**
+- Speak clearly with a short phrase like "Hey" or "Hello"
+- Adjust `WAKE_WORD_SENSITIVITY` if too sensitive or not responsive enough
+- Keep background noise low for better detection
+
 ## Troubleshooting
 
 | Issue | Solution |
@@ -182,6 +210,9 @@ esp32-ai-assistant/
 | TTS silent | Check volume level, verify TTS API enabled |
 | Audio too quiet | Increase `DEFAULT_VOLUME` or use VOL+ button |
 | Recording too short | Lower `VAD_THRESHOLD` or increase `VAD_SILENCE_MS` |
+| Wake word too sensitive | Lower `WAKE_WORD_SENSITIVITY` (try 0.3) |
+| Wake word not responding | Increase `WAKE_WORD_SENSITIVITY` (try 0.7) or lower `WAKE_WORD_ENERGY_THRESHOLD` |
+| Wake word disabled | Set `WAKE_WORD_ENABLED` to `true` in config.h |
 
 ## Dependencies
 
@@ -194,8 +225,8 @@ esp32-ai-assistant/
 ## Memory Usage
 
 ```
-RAM:   14.3% (46,732 / 327,680 bytes)
-Flash: 15.1% (992,081 / 6,553,600 bytes)
+RAM:   14.3% (46,808 / 327,680 bytes)
+Flash: 15.2% (994,997 / 6,553,600 bytes)
 ```
 
 ## License

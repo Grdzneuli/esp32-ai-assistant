@@ -746,12 +746,13 @@
             </svg>
         </div>
         <h1>ESP32-S3 AI Assistant</h1>
-        <p class="subtitle">Full Voice AI Assistant - Talk & Listen</p>
+        <p class="subtitle">Full Voice AI Assistant - Wake Word + Talk & Listen</p>
     </header>
 
     <nav>
         <ul>
             <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#wake-word">Wake Word</a></li>
             <li><a href="#api-setup">API Setup</a></li>
             <li><a href="#hardware">Hardware</a></li>
             <li><a href="#buttons">Controls</a></li>
@@ -784,8 +785,8 @@
                     <div class="step">
                         <div class="step-number">3</div>
                         <div class="step-content">
-                            <h3>Press BOOT to Talk</h3>
-                            <p>Press the BOOT button to start recording. Speak your question clearly.</p>
+                            <h3>Say Wake Word or Press BOOT</h3>
+                            <p>Say a short phrase like "Hey" to activate hands-free, or press BOOT button. Then speak your question clearly.</p>
                         </div>
                     </div>
                     <div class="step">
@@ -793,6 +794,60 @@
                         <div class="step-content">
                             <h3>Hear Your Answer</h3>
                             <p>Your speech is transcribed, sent to Gemini AI, and the response is spoken aloud!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wake Word -->
+        <section id="wake-word" class="fade-in">
+            <h2>Wake Word Detection</h2>
+            <div class="quick-start">
+                <p style="margin-bottom: 20px; color: var(--text-dim);">Activate the assistant hands-free using voice detection!</p>
+                <div class="hardware-grid" style="margin-top: 30px;">
+                    <div class="hardware-card">
+                        <h3>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2"/></svg>
+                            How It Works
+                        </h3>
+                        <p>The device continuously monitors audio for speech patterns. When it detects a short phrase (300ms-1.2s), it automatically activates listening mode.</p>
+                    </div>
+                    <div class="hardware-card">
+                        <h3>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                            Suggested Phrases
+                        </h3>
+                        <p>Use short, clear phrases: <strong>"Hey"</strong>, <strong>"Hello"</strong>, <strong>"Hi there"</strong>, or any brief word that gets the device's attention.</p>
+                    </div>
+                    <div class="hardware-card">
+                        <h3>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2"/></svg>
+                            Adjusting Sensitivity
+                        </h3>
+                        <p>Edit <code style="background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px;">WAKE_WORD_SENSITIVITY</code> in config.h (0.0-1.0). Higher = more sensitive.</p>
+                    </div>
+                </div>
+                <div class="steps" style="margin-top: 30px;">
+                    <div class="step">
+                        <div class="step-number" style="background: #00ff88;">1</div>
+                        <div class="step-content">
+                            <h3>Device is Idle</h3>
+                            <p>Wake word detection runs automatically in the background when the device is idle.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number" style="background: #ff4466;">2</div>
+                        <div class="step-content">
+                            <h3>Say Wake Phrase</h3>
+                            <p>Speak a short phrase clearly. You'll hear the start sound when activated.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number" style="background: #00d4ff;">3</div>
+                        <div class="step-content">
+                            <h3>Speak Your Question</h3>
+                            <p>Continue with your question. The device records until it detects silence.</p>
                         </div>
                     </div>
                 </div>
@@ -858,7 +913,7 @@
                             <div class="chat-message user">Hello, what can you help me with?</div>
                             <div class="chat-message ai">Hi! I can help with questions, coding, IoT projects, and more!</div>
                         </div>
-                        <div class="screen-state-bar">Ready - Press BOOT to talk</div>
+                        <div class="screen-state-bar">Ready - Say wake word or press BOOT</div>
                     </div>
                     <div class="device-buttons">
                         <div class="device-btn" onclick="simulateButton('vol-')">VOL-</div>
@@ -1008,6 +1063,7 @@
 
                 <div class="interactive-flow">
                     <div class="flow-controls">
+                        <button class="flow-btn" onclick="simulateFlow('wakeword')">Say Wake Word</button>
                         <button class="flow-btn" onclick="simulateFlow('boot')">Press BOOT</button>
                         <button class="flow-btn" onclick="simulateFlow('silence')">Silence Detected</button>
                         <button class="flow-btn" onclick="simulateFlow('response')">AI Responds</button>
@@ -1145,7 +1201,7 @@
 
                     setTimeout(() => {
                         currentState = 'idle';
-                        stateBar.textContent = 'Ready - Press BOOT to talk';
+                        stateBar.textContent = 'Ready - Say wake word or press BOOT';
                         stateBar.style.color = '#888899';
                         led.style.background = '#00d4ff';
                         led.style.animation = 'ledPulse 2s ease-in-out infinite';
@@ -1154,12 +1210,12 @@
             } else if (button === 'vol+') {
                 stateBar.textContent = 'Volume: 80%';
                 setTimeout(() => {
-                    stateBar.textContent = currentState === 'idle' ? 'Ready - Press BOOT to talk' : stateBar.textContent;
+                    stateBar.textContent = currentState === 'idle' ? 'Ready - Say wake word or press BOOT' : stateBar.textContent;
                 }, 1000);
             } else if (button === 'vol-') {
                 stateBar.textContent = 'Volume: 60%';
                 setTimeout(() => {
-                    stateBar.textContent = currentState === 'idle' ? 'Ready - Press BOOT to talk' : stateBar.textContent;
+                    stateBar.textContent = currentState === 'idle' ? 'Ready - Say wake word or press BOOT' : stateBar.textContent;
                 }, 1000);
             }
         }
@@ -1175,7 +1231,7 @@
                 return;
             }
 
-            if (action === 'boot') {
+            if (action === 'wakeword' || action === 'boot') {
                 document.querySelector('[data-state="listening"]').classList.add('active');
             } else if (action === 'silence') {
                 document.querySelector('[data-state="processing"]').classList.add('active');

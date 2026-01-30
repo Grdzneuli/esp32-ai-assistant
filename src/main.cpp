@@ -22,6 +22,7 @@
 #include "audio_output.h"
 #include "buttons.h"
 #include "led.h"
+#include "wake_word.h"
 
 // Global objects
 WiFiManager wifiManager;
@@ -32,6 +33,7 @@ AudioInput audioInput;
 AudioOutput audioOutput;
 Buttons buttons;
 StatusLED statusLed;
+WakeWordDetector wakeWord;
 
 // TTS audio buffer (allocated in PSRAM)
 int16_t* ttsBuffer = nullptr;
@@ -57,6 +59,15 @@ void setState(AssistantState newState);
 void handleButtonEvent(Button button, ButtonEvent event);
 void processVoiceInput();
 String getTextFromAudio();
+void onWakeWordDetected();
+
+// Wake word detection flag (set from callback, processed in main loop)
+volatile bool wakeWordTriggered = false;
+
+// Wake word callback - called from detection task
+void onWakeWordDetected() {
+    wakeWordTriggered = true;
+}
 
 void setup() {
     Serial.begin(SERIAL_BAUD_RATE);
@@ -141,6 +152,17 @@ void setup() {
             Serial.println("[ERROR] Failed to allocate TTS buffer");
         }
 
+        // Initialize wake word detector
+        if (WAKE_WORD_ENABLED) {
+            if (wakeWord.begin()) {
+                wakeWord.setSensitivity(WAKE_WORD_SENSITIVITY);
+                wakeWord.setCallback(onWakeWordDetected);
+                Serial.println("[System] Wake word detection enabled");
+            } else {
+                Serial.println("[System] Wake word init failed, button-only mode");
+            }
+        }
+
         delay(1000);
         setState(AssistantState::IDLE);
     } else {
@@ -162,6 +184,16 @@ void loop() {
     display.update();
     wifiManager.update();
     audioOutput.update();  // Handle async audio playback
+
+    // Check for wake word trigger
+    if (wakeWordTriggered && currentState == AssistantState::IDLE) {
+        wakeWordTriggered = false;
+        Serial.println("[WakeWord] Triggered - starting voice input");
+        wakeWord.stopListening();  // Stop wake word to free I2S for recording
+        audioOutput.playStartSound();
+        audioInput.startRecording();
+        setState(AssistantState::LISTENING);
+    }
 
     // Process audio if listening
     if (currentState == AssistantState::LISTENING) {
@@ -229,12 +261,18 @@ void setState(AssistantState newState) {
             statusLed.setIdle();
             display.setAssistantState(Display::AssistantState::IDLE);
             display.updateStatusBar(wifiManager.getRSSI(), currentVolume, false);
+            // Start wake word detection when idle
+            if (WAKE_WORD_ENABLED && wakeWord.isEnabled()) {
+                wakeWord.startListening();
+            }
             break;
 
         case AssistantState::LISTENING:
             statusLed.setListening();
             display.setAssistantState(Display::AssistantState::LISTENING);
             display.updateStatusBar(wifiManager.getRSSI(), currentVolume, true);
+            // Stop wake word detection during recording
+            wakeWord.stopListening();
             break;
 
         case AssistantState::PROCESSING:
@@ -266,6 +304,7 @@ void handleButtonEvent(Button button, ButtonEvent event) {
                 if (currentState == AssistantState::IDLE) {
                     // Start listening
                     Serial.println("[Button] Starting voice input...");
+                    wakeWord.stopListening();  // Stop wake word to free I2S
                     audioOutput.playStartSound();
                     audioInput.startRecording();
                     setState(AssistantState::LISTENING);
