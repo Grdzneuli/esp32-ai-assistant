@@ -1,0 +1,35 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+compile_commands.json
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+
+# Claude
+.claude/
+
+# Build artifacts
+*.o
+*.obj
+*.elf
+*.bin
+*.map
+*.hex
+
+# macOS
+.DS_Store
+._*
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Sensitive data
+src/config.h
+
+# Logs
+*.log

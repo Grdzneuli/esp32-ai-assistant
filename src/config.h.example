@@ -1,0 +1,112 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// =============================================================================
+// ESP32-S3 AI Board Configuration
+// =============================================================================
+// Copy this file to config.h and update with your credentials
+
+// -----------------------------------------------------------------------------
+// WiFi Configuration
+// -----------------------------------------------------------------------------
+#define WIFI_SSID          "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD      "YOUR_WIFI_PASSWORD"
+#define WIFI_CONNECT_TIMEOUT_MS 10000
+
+// -----------------------------------------------------------------------------
+// Google Gemini API Configuration
+// -----------------------------------------------------------------------------
+#define GEMINI_API_KEY     "YOUR_GEMINI_API_KEY"
+#define GEMINI_API_HOST    "generativelanguage.googleapis.com"
+#define GEMINI_MODEL       "gemini-1.5-flash"
+#define GEMINI_MAX_TOKENS  1024
+
+// -----------------------------------------------------------------------------
+// LCD Display Pins (1.9" IPS ST7789 170x320)
+// -----------------------------------------------------------------------------
+#define TFT_DC_PIN         11
+#define TFT_SDA_PIN        10   // MOSI
+#define TFT_SCL_PIN        12   // SCLK
+#define TFT_CS_PIN         13
+#define TFT_RST_PIN        14
+#define TFT_BL_PIN         3    // Backlight
+
+#define TFT_WIDTH          170
+#define TFT_HEIGHT         320
+
+// -----------------------------------------------------------------------------
+// I2S Microphone Pins (Digital MEMS Microphone)
+// -----------------------------------------------------------------------------
+#define I2S_MIC_SCK_PIN    5    // Serial Clock
+#define I2S_MIC_SD_PIN     6    // Serial Data
+#define I2S_MIC_WS_PIN     4    // Word Select (L/R Clock)
+
+#define I2S_MIC_PORT       I2S_NUM_0
+#define I2S_MIC_SAMPLE_RATE     16000
+#define I2S_MIC_SAMPLE_BITS     16
+#define I2S_MIC_CHANNEL_NUM     1
+#define I2S_MIC_BUFFER_SIZE     1024
+
+// -----------------------------------------------------------------------------
+// I2S Audio Amplifier Pins (Speaker Output)
+// -----------------------------------------------------------------------------
+#define I2S_SPK_DIN_PIN    7    // Data In
+#define I2S_SPK_BCLK_PIN   15   // Bit Clock
+#define I2S_SPK_LRCLK_PIN  16   // Left/Right Clock
+
+#define I2S_SPK_PORT       I2S_NUM_1
+#define I2S_SPK_SAMPLE_RATE     16000
+#define I2S_SPK_SAMPLE_BITS     16
+
+// -----------------------------------------------------------------------------
+// Button Pins
+// -----------------------------------------------------------------------------
+#define BTN_VOL_UP_PIN     40
+#define BTN_VOL_DOWN_PIN   39
+#define BTN_BOOT_PIN       0    // Boot button (used for talk/interrupt)
+
+#define BTN_DEBOUNCE_MS    50
+
+// -----------------------------------------------------------------------------
+// WS2812 RGB LED
+// -----------------------------------------------------------------------------
+#define LED_PIN            48   // WS2812 data pin (check your board)
+#define LED_COUNT          1
+
+// LED Colors (GRB format for WS2812)
+#define LED_COLOR_IDLE     0x001000   // Dim green
+#define LED_COLOR_LISTENING 0x100000  // Blue
+#define LED_COLOR_THINKING 0x101000   // Cyan
+#define LED_COLOR_SPEAKING 0x000010   // Red
+#define LED_COLOR_ERROR    0x000080   // Bright red
+#define LED_COLOR_WIFI     0x100010   // Purple
+
+// -----------------------------------------------------------------------------
+// Audio Settings
+// -----------------------------------------------------------------------------
+#define DEFAULT_VOLUME     70   // 0-100
+#define MIN_VOLUME         0
+#define MAX_VOLUME         100
+#define VOLUME_STEP        10
+
+// Voice Activity Detection
+#define VAD_THRESHOLD      500
+#define VAD_SILENCE_MS     1500  // Silence duration to stop recording
+
+// -----------------------------------------------------------------------------
+// Web Server
+// -----------------------------------------------------------------------------
+#define WEB_SERVER_PORT    80
+
+// -----------------------------------------------------------------------------
+// System Settings
+// -----------------------------------------------------------------------------
+#define SERIAL_BAUD_RATE   115200
+
+// Conversation history
+#define MAX_CONVERSATION_HISTORY 10
+
+// Display update interval
+#define DISPLAY_UPDATE_MS  100
+
+#endif // CONFIG_H
