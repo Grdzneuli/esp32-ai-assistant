@@ -188,26 +188,46 @@ void AudioOutput::stop() {
 }
 
 void AudioOutput::playAsync(const int16_t* samples, size_t count) {
-    if (!_initialized || count == 0) return;
+    Serial.println("[AUDIO DEBUG] ========== PLAYBACK START ==========");
+    Serial.printf("[AUDIO DEBUG] Requested to play %d samples\n", count);
+
+    if (!_initialized || count == 0) {
+        Serial.println("[AUDIO DEBUG] ERROR: Not initialized or count is 0");
+        return;
+    }
 
     // Stop any existing playback
     if (_asyncBuffer) {
+        Serial.println("[AUDIO DEBUG] Freeing previous buffer");
         free(_asyncBuffer);
     }
 
     // Allocate buffer in PSRAM if available
+    size_t bufferSize = count * sizeof(int16_t);
+    Serial.printf("[AUDIO DEBUG] Allocating %d bytes for playback buffer\n", bufferSize);
+
     if (psramFound()) {
-        _asyncBuffer = (int16_t*)ps_malloc(count * sizeof(int16_t));
+        _asyncBuffer = (int16_t*)ps_malloc(bufferSize);
+        Serial.println("[AUDIO DEBUG] Using PSRAM");
     } else {
-        _asyncBuffer = (int16_t*)malloc(count * sizeof(int16_t));
+        _asyncBuffer = (int16_t*)malloc(bufferSize);
+        Serial.println("[AUDIO DEBUG] Using regular RAM");
     }
 
     if (!_asyncBuffer) {
-        Serial.println("[AudioOutput] Failed to allocate async buffer");
+        Serial.println("[AUDIO DEBUG] ERROR: Failed to allocate async buffer!");
         return;
     }
 
-    memcpy(_asyncBuffer, samples, count * sizeof(int16_t));
+    memcpy(_asyncBuffer, samples, bufferSize);
+    Serial.println("[AUDIO DEBUG] Buffer copied");
+
+    // Check first few samples
+    Serial.printf("[AUDIO DEBUG] First 4 samples: %d %d %d %d\n",
+                  _asyncBuffer[0], _asyncBuffer[1], _asyncBuffer[2], _asyncBuffer[3]);
+    Serial.printf("[AUDIO DEBUG] Last 4 samples: %d %d %d %d\n",
+                  _asyncBuffer[count-4], _asyncBuffer[count-3], _asyncBuffer[count-2], _asyncBuffer[count-1]);
+
     applyVolume(_asyncBuffer, count);
 
     _asyncSamples = count;
@@ -215,7 +235,9 @@ void AudioOutput::playAsync(const int16_t* samples, size_t count) {
     _playing = true;
     _stopRequested = false;
 
-    Serial.printf("[AudioOutput] Starting async playback of %d samples\n", count);
+    Serial.printf("[AUDIO DEBUG] Starting async playback: %d samples (%.2f sec at %d Hz)\n",
+                  count, (float)count / I2S_SPK_SAMPLE_RATE, I2S_SPK_SAMPLE_RATE);
+    Serial.println("[AUDIO DEBUG] ========================================");
 }
 
 void AudioOutput::update() {
@@ -232,14 +254,18 @@ void AudioOutput::update() {
         return;
     }
 
-    // Write a chunk of audio
-    const size_t CHUNK_SIZE = 512;
+    // Write a chunk of audio - use blocking write to ensure audio plays
+    const size_t CHUNK_SIZE = 1024;
     size_t remaining = _asyncSamples - _asyncPosition;
     size_t toWrite = min(remaining, CHUNK_SIZE);
 
     size_t bytesWritten = 0;
-    i2s_write(I2S_SPK_PORT, _asyncBuffer + _asyncPosition,
-              toWrite * sizeof(int16_t), &bytesWritten, pdMS_TO_TICKS(10));
+    esp_err_t err = i2s_write(I2S_SPK_PORT, _asyncBuffer + _asyncPosition,
+              toWrite * sizeof(int16_t), &bytesWritten, portMAX_DELAY);
+
+    if (err != ESP_OK) {
+        Serial.printf("[AudioOutput] I2S write error: %d\n", err);
+    }
 
     _asyncPosition += bytesWritten / sizeof(int16_t);
 }

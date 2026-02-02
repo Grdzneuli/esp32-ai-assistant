@@ -90,6 +90,10 @@ void setup() {
     buttons.begin();
     buttons.setCallback(handleButtonEvent);
 
+    // Ensure BOOT button pin is configured correctly (GPIO 0)
+    pinMode(BTN_BOOT_PIN, INPUT_PULLUP);
+    Serial.println("[Buttons] BOOT pin configured: GPIO " + String(BTN_BOOT_PIN));
+
     // Initialize audio
     if (!audioInput.begin()) {
         Serial.println("[ERROR] Audio input initialization failed");
@@ -128,9 +132,9 @@ void setup() {
         // Initialize Gemini client
         gemini.begin(GEMINI_API_KEY);
         gemini.setSystemPrompt(
-            "You are a helpful AI assistant running on an ESP32 microcontroller. "
-            "Keep your responses concise and friendly, ideally under 100 words. "
-            "You can help with general questions, coding, IoT projects, and more."
+            "You are a voice assistant on an ESP32. CRITICAL: Keep ALL responses under 50 words. "
+            "Be brief and conversational - this is spoken output, not text. "
+            "Never use bullet points, lists, or markdown. Just speak naturally in 1-2 short sentences."
         );
 
         // Initialize Speech client (STT/TTS)
@@ -178,6 +182,15 @@ void setup() {
 }
 
 void loop() {
+    // Ensure GPIO 0 stays configured as INPUT_PULLUP (something may be resetting it)
+    static bool gpioConfigured = false;
+    if (!gpioConfigured) {
+        pinMode(BTN_BOOT_PIN, INPUT_PULLUP);
+        pinMode(BTN_VOL_UP_PIN, INPUT_PULLUP);
+        pinMode(BTN_VOL_DOWN_PIN, INPUT_PULLUP);
+        gpioConfigured = true;
+    }
+
     // Update components
     buttons.update();
     statusLed.update();
@@ -196,8 +209,16 @@ void loop() {
     }
 
     // Process audio if listening
+    static uint32_t lastDebugTime = 0;
+    static int debugCounter = 0;
     if (currentState == AssistantState::LISTENING) {
         audioInput.process();
+
+        // Update debug counter while listening
+        if (millis() - lastDebugTime > 500) {
+            lastDebugTime = millis();
+            debugCounter++;
+        }
 
         // Check for voice activity
         if (audioInput.isRecording()) {
@@ -304,19 +325,12 @@ void handleButtonEvent(Button button, ButtonEvent event) {
                 if (currentState == AssistantState::IDLE) {
                     // Start listening
                     Serial.println("[Button] Starting voice input...");
-                    wakeWord.stopListening();  // Stop wake word to free I2S
-                    audioOutput.playStartSound();
                     audioInput.startRecording();
                     setState(AssistantState::LISTENING);
-                } else if (currentState == AssistantState::LISTENING) {
-                    // Stop listening manually
-                    Serial.println("[Button] Stopping voice input...");
+                } else {
+                    // Any other state: stop and reset to IDLE
+                    Serial.println("[Button] Stopping and resetting...");
                     audioInput.stopRecording();
-                    audioOutput.playStopSound();
-                    setState(AssistantState::PROCESSING);
-                } else if (currentState == AssistantState::RESPONDING) {
-                    // Interrupt response
-                    Serial.println("[Button] Interrupting response...");
                     audioOutput.stop();
                     setState(AssistantState::IDLE);
                 }
@@ -361,7 +375,6 @@ void processVoiceInput() {
 
     // Step 1: Speech-to-Text - Convert audio to text
     Serial.println("[STT] Transcribing audio...");
-    display.showThinking();
 
     String userText = speech.transcribe(
         audioInput.getBuffer(),
@@ -403,12 +416,25 @@ void processVoiceInput() {
     Serial.println("[AI] " + response);
 
     // Step 3: Text-to-Speech - Convert response to audio
+    // Truncate very long responses to prevent TTS memory issues
+    String ttsText = response;
+    const int MAX_TTS_CHARS = 500;  // ~30 seconds of speech max
+    if (ttsText.length() > MAX_TTS_CHARS) {
+        // Find a good break point (end of sentence)
+        int breakPoint = ttsText.lastIndexOf('.', MAX_TTS_CHARS);
+        if (breakPoint < MAX_TTS_CHARS / 2) {
+            breakPoint = MAX_TTS_CHARS;  // No good break, just truncate
+        }
+        ttsText = ttsText.substring(0, breakPoint + 1);
+        Serial.printf("[TTS] Truncated from %d to %d chars\n", response.length(), ttsText.length());
+    }
+
     Serial.println("[TTS] Synthesizing speech...");
     setState(AssistantState::RESPONDING);
 
     if (ttsBuffer) {
         size_t ttsSamples = speech.synthesize(
-            response,
+            ttsText,
             ttsBuffer,
             ttsBufferSize,
             I2S_SPK_SAMPLE_RATE

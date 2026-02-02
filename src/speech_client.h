@@ -42,6 +42,7 @@ private:
 
     String base64Encode(const uint8_t* data, size_t length);
     size_t base64Decode(const String& input, uint8_t* output, size_t maxLength);
+    size_t base64Decode(const char* input, size_t inputLen, uint8_t* output, size_t maxLength);
 
     void setError(const String& error);
     void clearError();

@@ -11,7 +11,7 @@
 #define COLOR_TEXT_DIM    TFT_DARKGREY
 #define COLOR_ACCENT      TFT_CYAN
 #define COLOR_USER_MSG    TFT_GREEN
-#define COLOR_AI_MSG      TFT_YELLOW
+#define COLOR_AI_MSG      TFT_WHITE
 #define COLOR_ERROR       TFT_RED
 #define COLOR_STATUS_BAR  0x2104  // Dark gray
 
